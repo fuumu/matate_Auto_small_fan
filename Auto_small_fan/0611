@@ -1,0 +1,127 @@
+//赤外線レシーバー
+//受信側の単体テスト
+
+/*
+  ============================================================
+  IR 単体テスト ─ USBファン ON/OFF
+  ============================================================
+  【目的】
+    赤外線リモコンでUSB扇風機のON/OFFだけを確認する
+    → 本番コードを入れる前に IR受信 と ファン制御 が
+       それぞれ正しく動くことを検証する
+
+  【使用部品】
+    ・Arduino UNO R4 WiFi
+    ・IR受信モジュール（VS1838B / KY-022）
+    ・TIP120 + 1kΩ抵抗 + 1N4007ダイオード
+    ・USBメス端子台
+
+  【ピン】
+    D2  … IR受信モジュール OUT
+    D9  … TIP120 ベース（PWM）
+
+  【使用ライブラリ】
+    IRremote 4.x（ライブラリマネージャーからインストール）
+
+  【手順】
+    STEP 1: SCAN_MODE true でシリアルモニタを開き、
+            リモコンの使いたいボタンを押して
+            コマンド値（0x??）を確認する
+    STEP 2: 確認した値を BTN_ON / BTN_OFF に書き込む
+    STEP 3: SCAN_MODE false にして書き込み直す
+    STEP 4: リモコンでファンがON/OFFすれば成功！
+  ============================================================
+*/
+
+#include <IRremote.hpp>
+
+// ---- ① まずここを true にしてボタンのコマンド値を調べる ----
+#define SCAN_MODE true
+// 調べ終わったら false に変えて STEP 2 へ進む
+
+// ---- ② 調べたコマンド値をここに書き込む ----
+const uint16_t BTN_ON  = 0x45;   // ← ON  にしたいボタンの値に書き換え
+const uint16_t BTN_OFF = 0x46;   // ← OFF にしたいボタンの値に書き換え
+
+// ---- ピン定義 ----
+const int IR_PIN  = 2;   // IR受信モジュール OUT
+const int FAN_PIN = 9;   // TIP120 ベース (PWM)
+
+// ---- ファン状態 ----
+bool fanOn = false;
+
+// ============================================================
+void setup() {
+  Serial.begin(115200);
+  pinMode(FAN_PIN, OUTPUT);
+  analogWrite(FAN_PIN, 0);   // 起動時はOFF
+
+  IrReceiver.begin(IR_PIN, ENABLE_LED_FEEDBACK);
+
+#if SCAN_MODE
+  Serial.println("========== SCAN MODE ==========");
+  Serial.println("リモコンのボタンを押してください");
+  Serial.println("ON用・OFF用 それぞれのコマンド値を記録してください");
+  Serial.println("================================");
+#else
+  Serial.println("========== FAN TEST MODE ==========");
+  Serial.print("BTN_ON  = 0x"); Serial.println(BTN_ON,  HEX);
+  Serial.print("BTN_OFF = 0x"); Serial.println(BTN_OFF, HEX);
+  Serial.println("===================================");
+  Serial.println("ファン: OFF");
+#endif
+}
+
+// ============================================================
+// ファンON（フル回転）
+// ============================================================
+void fanTurnOn() {
+  analogWrite(FAN_PIN, 255);
+  fanOn = true;
+  Serial.println(">>> ファン ON <<<");
+}
+
+// ============================================================
+// ファンOFF
+// ============================================================
+void fanTurnOff() {
+  analogWrite(FAN_PIN, 0);
+  fanOn = false;
+  Serial.println(">>> ファン OFF <<<");
+}
+
+// ============================================================
+// メインループ
+// ============================================================
+void loop() {
+  if (!IrReceiver.decode()) return;   // 受信待ち
+
+  // リピート（長押し）は無視
+  if (!(IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT)) {
+    uint16_t cmd = IrReceiver.decodedIRData.command;
+
+#if SCAN_MODE
+    // ─── スキャンモード：受信したコマンドを表示するだけ ───
+    Serial.print("受信コマンド: 0x");
+    Serial.println(cmd, HEX);
+
+#else
+    // ─── テストモード：ON/OFFを制御 ───
+    Serial.print("受信: 0x"); Serial.println(cmd, HEX);
+
+    if (cmd == BTN_ON) {
+      fanTurnOn();
+    } else if (cmd == BTN_OFF) {
+      fanTurnOff();
+    } else {
+      Serial.println("(登録されていないボタン)");
+    }
+
+    // 現在の状態を表示
+    Serial.print("現在の状態: ファン ");
+    Serial.println(fanOn ? "ON" : "OFF");
+#endif
+  }
+
+  IrReceiver.resume();   // 次の受信に備える
+}
