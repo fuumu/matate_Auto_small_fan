@@ -43,7 +43,7 @@ const char *slotNames[NUM_SLOTS] = {
   "風量 強",
   "風量 中",
   "風量 弱",
-  "光調節"
+  "光調節",
 };
 
 struct StoredCode {
