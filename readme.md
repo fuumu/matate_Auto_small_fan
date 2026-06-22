@@ -112,11 +112,8 @@ graph TD;
   - 3.選択ボタンで任意のスロットを選択した状態で、送信ボタンを押すことで赤外線信号が送られ扇風機が動きます
 
 ![スロット画像](image-2.png)
-<video controls src="IMG_7421-1.mov" title="Title"></video>
 
 - 2.スタンドライト
   - 1.作業を開始し、超音波センサーが人を検知するとdiscordに通知が行きます(ライトのonは手動)
    ![alt text](image-1.png)
   - 2.作業が終わり席を離れたことを超音波センサーが検知をするとライトが自動で消えます
-
-<video controls src="IMG_7437.mov" title="Title"></video>
